@@ -35,6 +35,11 @@ include_directories(include)
 add_executable(cpp_executable src/cpp_node.cpp)
 ament_target_dependencies(cpp_executable rclcpp std_msgs)
 
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 # Install Cpp executables
 install(TARGETS
   cpp_executable
