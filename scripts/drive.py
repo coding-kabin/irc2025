@@ -19,7 +19,7 @@ class Drive(Node):
         # Create subscription to joystick
         self.subscription = self.create_subscription(
             Joy,
-            '/joy',
+            '/joy0',
             self.callback,
             10
         )

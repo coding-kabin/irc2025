@@ -96,8 +96,12 @@ then running programs is just
 ros2 run irc2025 drive.py
 ros2 run irc2025 drive_executable
 ```
+we also have python launch files that can be run as follows
+```bash
+ros2 launch irc2025 manual_control.py
+```
 
-Note: ROS2 supports launch files in the form of python scripts that have not yet been written
+**NOTE:** always source _setup.bash_
 
 ## How to Use MicroROS
 
