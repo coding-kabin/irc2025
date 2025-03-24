@@ -5,8 +5,6 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import Joy
 import math
-import time
-
 
 class Drive(Node):
     def __init__(self):

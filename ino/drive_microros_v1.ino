@@ -14,11 +14,11 @@
 #define IN3 12
 #define BAUDRATE 115200
 #define LED_PIN 13
-
+#define ARRAY_LEN 6
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
 std_msgs__msg__Float32MultiArray msg;
-std_msgs__msg__Float32 msg_fb = {0};
+std_msgs__msg__Float32 msg_fb; // Feedback message
 rclc_executor_t executor;
 rcl_allocator_t allocator;
 rclc_support_t support;
@@ -55,6 +55,8 @@ enum states {
   AGENT_DISCONNECTED
 } state;
 
+bool publish_feedback = false; // Flag to publish feedback
+
 void error_loop(){
   while(1){
     digitalWrite(fan1, LOW);
@@ -72,9 +74,21 @@ void subscription_callback(const void *msgin)
   left_wheel_mid = msg->data.data[3];
   right_wheel_back = msg->data.data[4];
   left_wheel_back = msg->data.data[5];
-  msg_fb.data=msg->data.data[0]+msg->data.data[1]+msg->data.data[2]+msg->data.data[3]+msg->data.data[4]+msg->data.data[5];
-  //RCCHECK(rcl_publish(&publisher, &msg_fb, NULL));
+
+  msg_fb.data = (right_wheel_front+left_wheel_front+right_wheel_mid+left_wheel_mid+right_wheel_back+left_wheel_back)/6.0;
+  // Set flag to publish feedback
+  publish_feedback = true;
 }
+
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
+  RCLC_UNUSED(last_call_time);
+  if (timer != NULL && publish_feedback) {
+    RCCHECK(rcl_publish(&publisher, &msg_fb, NULL));
+    publish_feedback = false;
+  }
+}
+
 
 bool create_entities()
 {
@@ -82,49 +96,51 @@ bool create_entities()
   RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
   RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "", &support));
 
+  msg.data.capacity = ARRAY_LEN;
+  msg.data.size = 0;
+  msg.data.data = (float*) malloc(msg.data.capacity * sizeof(float));
+  
+  msg_fb.data = 0.0;
+
   RCCHECK(rclc_subscription_init_default(
     &subscriber,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
     "rover"));
 
+  // Initialize feedback publisher
   RCCHECK(rclc_publisher_init_default(
-  &publisher,
-  &node,
-  ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-  "drive_fb"));
+    &publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
+    "feedback"));
 
   RCCHECK(rclc_timer_init_default(
   &timer,
   &support,
-  RCL_MS_TO_NS(1000),
+  RCL_MS_TO_NS(100),  // Publish at 10Hz
   timer_callback));
 
+  RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-  RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
 
   return true;
 }
+
 
 void destroy_entities()
 {
   rmw_context_t * rmw_context = rcl_context_get_rmw_context(&support.context);
   (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
-  rcl_publisher_fini(&publisher, &node);
+  free(msg.data.data);
+
   rcl_subscription_fini(&subscriber, &node);
+  rcl_publisher_fini(&publisher, &node); // Clean up publisher
   rclc_executor_fini(&executor);
   rcl_node_fini(&node);
   rclc_support_fini(&support);
-}
-
-void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
-{
-  RCLC_UNUSED(last_call_time);
-  if (timer != NULL) {
-    RCCHECK(rcl_publish(&publisher, &msg_fb, NULL));
-  }
 }
 
 void setup() {
@@ -133,7 +149,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(fan1, HIGH);
   digitalWrite(fan2, HIGH);
-  msg_fb.data = 0.0f;
+  
   set_microros_transports();
   delay(1000);
 

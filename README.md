@@ -11,6 +11,7 @@ ROS2 Installation instructions : [ROS2 Humble Installation](https://docs.ros.org
 - [How to Use MicroROS](#how-to-use-microros)
   - [MicroROS Header Files and Variables](#whats-necessary-for-a-microros-program)
   - [Making Code Disconnection Proof (Code Structure)](#dealing-with-disconnection)
+  - [Error Handling?!?](#error-handling-yay)
 
 
 ## File Structure and New File Locations
@@ -133,7 +134,7 @@ rcl_node_t node;
 
 - ```micro_ros_arduino.h``` : Sets up the Arduino for Micro-ROS.
 - ```rcl/rcl.h``` : Provides the core ROS 2 functionality.
-- ```rcl/error_handling.h``` : Helps you handle errors in ROS 2 operations. Its usage will be expanded on [later]().
+- ```rcl/error_handling.h``` : Helps you handle errors in ROS 2 operations. Its usage will be expanded on [later](#error-handling-yay).
 - ```rclc/rclc.h``` : Simplifies ROS 2 API usage for microcontrollers. 
 - ```rclc/executor.h``` : Manages the execution of subscription or timer driven callback functions.
 - ```rmw_microros/rmw_microros.h``` : Handles the communication layer between the microcontroller and the ROS 2 network
@@ -247,3 +248,29 @@ void loop() {
 - ```AGENT_CONNECTED```: If the agent is connected runs the code and spins as per user requirement.
 - ```AGENT_DISCONNECTED```: Destroys the Micro-ROS entities and transitions back to WAITING_AGENT.
 
+### Error Handling YAY
+
+In the code we will see some functions called within macros ```RCCHECK()``` and ```RCSOFTCHECK()```. The first one is used to check for critical operations where failure should result in halting of execution. The second one is used in less critical cases(soft check) where failure can be ignored
+
+```RCCHECK()```:
+- **Behavior**:
+  - If the function (`fn`) returns an error (`!= RCL_RET_OK`), it calls `error_loop()`, trapping the device in an infinite loop (fatal error).
+  - Ensures the system doesn’t proceed with invalid states.
+
+**Key Uses in the Code**
+```cpp
+RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "", &support));
+RCCHECK(rclc_publisher_init_default(&publisher, &node, ...));
+RCCHECK(rcl_publish(&publisher, &msg_fb, NULL));
+```
+
+```RCSOFTCHECK()```:
+- **Behavior**:
+  - If the function (fn) fails, the error is silently discarded (empty {} block).
+  - Allows the system to continue running even if occasional errors occur (e.g., temporary agent disconnections).
+
+**Key Uses in the Code**
+  -Spinning the executor to process incoming messages:
+```cpp
+RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
+```
