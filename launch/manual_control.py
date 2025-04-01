@@ -32,8 +32,15 @@ def generate_launch_description():
         name='drive_node'
     )
 
+    camera_servo = Node(
+        package='irc2025',
+        executable='servos_for_drive.py',
+        name='servo_control_node'
+    )
+
     # Add nodes to the launch description
     ld.add_action(joy0_node)
     ld.add_action(joy1_node)
     ld.add_action(drive_node)
+    ld.add_action(camera_servo)
     return ld

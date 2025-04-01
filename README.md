@@ -130,6 +130,7 @@ rclc_executor_t executor;
 rcl_allocator_t allocator;
 rclc_support_t support;
 rcl_node_t node;
+rcl_timer_t timer;
 ```
 
 - ```micro_ros_arduino.h``` : Sets up the Arduino for Micro-ROS.
@@ -147,6 +148,7 @@ Subsequntly the various required variables are initialised
 - ```rcl_publisher_t publisher``` : Publishes messages to a topic.
 - ```rcl_subscription_t subscriber``` : Listens for messages on a topic and triggers a callback.
 - ```rclc_executor_t executor``` : Manages and executes callbacks for subscriptions, timers, and other events.
+- ```rcl_timer_t timer``` : Used to perform actions at a fixed frequency
 
 ### Dealing With Disconnection
 
@@ -186,10 +188,17 @@ bool create_entities()
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
     "sample_subscriber")); //subscriber creation
 
+  RCCHECK(rclc_timer_init_default(
+  &timer,
+  &support,
+  RCL_MS_TO_NS($num),      //replace $num with how frequent you want the timer to be called in milliseconds
+  timer_callback));   
+
   // create executor
   executor = rclc_executor_get_zero_initialized_executor();
-  RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+  RCCHECK(rclc_executor_init(&executor, &support.context, $num, &allocator));    //replace $num with number of entities that need the executor (ie. no of timers+subscribers). here it will be 2
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+  RCCHECK(rclc_executor_add_timer(&executor, &timer));
 
   return true;
 }

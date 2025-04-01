@@ -10,7 +10,7 @@ class LD_control(Node):
         super().__init__('ld_control')
         self.publisher_ = self.create_publisher(Float32MultiArray, 'publish', 10)
         self.subscription = self.create_subscription(Joy, '/joy1', self.callback, 10)
-        self.c = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] #format [pumps,enable,analog_lt,analog_rt,analog_base]
+        self.c = [0.0, 0.0, 0.0, 0.0, 0.0] #format [pumps,enable,analog_lt,analog_rt,analog_base]
         self.timer = self.create_timer(0.1, self.timer_callback)  # 10 Hz
 
     def callback(self, data):
@@ -38,15 +38,19 @@ class LD_control(Node):
 
         if b[4]>0.8 and b[5]>0.8:
             self.c[4]=0.0
+        elif b[4]<0.8 and b[5]<0.8:
+            self.c[4]=0.0     
         elif b[5]<0.8:              #base left and right using analog triggers
             self.c[4]=(0.8-b[5])/1.8 
         elif b[4]<0.8:
-            self.c[4]=(b[4]-0.8)/1.8
+            self.c[4]=(b[4]-0.8)/1.8   
 
         if a[0] == 1:
             self.c[1]=1.0          #enable the auger X means DRILL
-        elif a[1] == 1:
-            self.c[1]=2.0          #enable the magnetic spinner O means SPIN
+        elif a[2] == 1:
+            self.c[1]=2.0           #magnetic spinner one way □
+        elif a[3] == 1:
+            self.c[1]=3.0           #magnetic spinner the other way △
                   #im so sorry. i am too stupid to redo this not from scratch. i will make it work like it used to after vpr the comment in the end is what should be here
         else:
             self.c[1]=0.0
