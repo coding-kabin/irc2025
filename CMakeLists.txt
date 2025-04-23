@@ -55,6 +55,7 @@ install(PROGRAMS
   scripts/ld_control.py
   scripts/drive.py
   scripts/arm_control.py
+  scripts/auto_teleop.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
